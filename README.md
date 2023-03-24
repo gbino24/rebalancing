@@ -27,6 +27,6 @@ This function is called within the 'Portfolio' class member function 'rebalance_
 The program will save two files:
 
 1. 'new_positions.json' :  This file contains the new positions after rebalancing.
-2. 'position_adjustments.json' : This file contains the adjustments that were made to 'executedTrades_20230321.json'.
+2. 'trades_to_execute.json' : This file contains the adjustments that were made to 'executedTrades_20230321.json' in order to get the new positions.
 
 The rebalancing can be done by simply running the 'main.py' script which imports all classes from the 'rebalancing.py' script.
