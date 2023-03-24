@@ -1,7 +1,7 @@
 # rebalancing
 Program which rebalances a portfolio of positions to a set of target allocations.
 
-Solution to the Quantitative Strategist coding assignment.
+Quantitative Strategist Coding Assignment.
 
 The question asks to create a system that will correctly rebalance a portfolio of positions to respect
 a target set of asset allocations. In my program, I am assuming that the initial position of the portfolio is provided
