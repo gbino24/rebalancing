@@ -35,7 +35,7 @@ class Broker:
     
     def save(self):
         self.positions.save(filename = 'new_positions')
-        self.portfolio_adjustments.save(filename = 'position_adjustments')
+        self.portfolio_adjustments.save(filename = 'trades_to_execute')
 
     def execute_trades(self, execution_positions: Positions) -> None:
         pass
