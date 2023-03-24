@@ -21,10 +21,10 @@ class Positions:
 # =============================================================================================================================================== #
 
 class Broker:
-    def __init__(self, initial_positions: Positions, initial_aum: float):
+    def __init__(self, initial_positions: Positions, initial_aum: float = 0.0):
         self.positions: Positions = initial_positions
-        self.aum: float = initial_aum
-        self.portfolio_adjustments: Positions = Positions({})
+        self.aum: float = initial_aum       # not used
+        self.trades: Positions = Positions({})
 
         # Seed
         np.random.seed(100)
@@ -38,25 +38,10 @@ class Broker:
     
     def save(self):
         # self.positions.save(filename = 'new_positions')     -- New positions
-        self.portfolio_adjustments.save(filename = 'trades_to_execute')
+        self.trades.save(filename = 'trades_to_execute')
 
     def execute_trades(self, execution_positions: Positions) -> None:
         pass
-
-# =============================================================================================================================================== #
-
-# Simple class to load positions from JSON files
-class LoadPositions():
-    def __init__(self, json_file: str):
-        self.filename: str = json_file
-    
-    def initialize(self) -> dict[str, float]:
-        if os.path.exists(self.filename):
-            with open(self.filename, 'r') as file:
-                logging.info("Initial positions successfully loaded.")
-                return json.load(file)
-        else:
-            return None
 
 # =============================================================================================================================================== #
 
@@ -65,7 +50,6 @@ class RebalancingSystem():
         self.target: str = target_allocations_json
         self.broker: Broker =  broker_object
         self.date: str = self.target[14:-5]
-        self.init_positions_filename: str = 'executedTrades'
 
         # Initialize the logger
         logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
@@ -73,18 +57,20 @@ class RebalancingSystem():
         file_handler.setLevel(logging.INFO)
         file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
         logging.getLogger('').addHandler(file_handler)
-        logging.info(" ** =========== NEW LOG BEGIN =========== ** " )
+        logging.info("** =========== NEW LOG BEGIN ============ ** " )
     
+    # Update logger with dictionary keys
+    def update_logger( self, dictionary: dict[str, float] ):
+        for key in dictionary.keys(): logging.info( key + " : " + str(dictionary[key]) )
+
     # Initialize the target allocation (in %)
     def set_targets(self) -> dict[str, float]:
-
         # We are assuming the file is in the same directory
         if os.path.exists(self.target):
             with open(self.target, 'r') as file:
                 self.target_weights = json.load(file)
-                logging.info("Target allocations successfully loaded.")
-                self.update_logger(self.target_weights)
-                
+                logging.info("== Target allocations successfully loaded ==")
+                self.update_logger(self.target_weights) 
         else:
             # File does not exist, exit the program
             logging.error("Could not load current positions. File '" +  self.target + "' not found.")
@@ -92,25 +78,12 @@ class RebalancingSystem():
 
     # Load in our current positions
     def get_current_positions(self) -> dict[str, float]:
-        
-        # Ensures the target weights and executed trades have the same date 
-        filename = self.init_positions_filename + '_' + self.date
-        self.current_positions = LoadPositions(filename + '.json').initialize()
-
-        # Make sure the appropriate file exists
-        if self.current_positions is None:
-            logging.error("Could not load current positions. File not found.")
-            quit()
-        else:
-            # Update the logger with the initial position from the file
-            self.update_logger(self.current_positions)
+        self.current_positions = self.broker.get_positions()._pos
+        logging.info("== Current positions successfully loaded ==")
+        self.update_logger(self.current_positions)
     
-    # Update logger with dictionary keys
-    def update_logger( self, dictionary: dict[str, float] ):
-        for key in dictionary.keys(): logging.info( key + " : " + str(dictionary[key]) )
-
     # Rebalances the portfolio and modifies the broker object in place.
-    def rebalance(self):
+    def rebalance(self, cash_to_invest: float):
         
         # Generate the target allocations
         self.set_targets()
@@ -120,15 +93,23 @@ class RebalancingSystem():
 
         # Get the live prices from the broker
         prices = self.broker.get_live_price()
-        logging.info("Current asset prices:")
+        logging.info("== Current asset prices (in $) ==")
         self.update_logger(prices)
 
         # Calculate the total dollar value
         total_value = sum( prce * units for (prce, units) in zip(prices.values(), self.current_positions.values()) )
 
+        # If the portfolio asset value is zero, use 'cash_to_invest' to reach the target allocations.
+        if total_value == 0 and cash_to_invest != 0:
+            total_value = cash_to_invest
+        # Avoid 'ZeroDivisionError'. If we have zero units in each asset, we need additional capital to reach target allocations.
+        elif total_value == 0 and cash_to_invest == 0:
+            logging.error("Cannot allocate assets. Portfolio value is zero.")
+            quit()
+
         # Compute the amount to be allocated to each asset
         target_values = {}
-        logging.info("Target positions established.")
+        logging.info("== Target positions established ==")
         for key in self.target_weights.keys():
             
             # Dollar amount for target
@@ -136,32 +117,30 @@ class RebalancingSystem():
 
             # The required number of assets to satisfy the target weights
             target_values[key] = asset_dollar_value / prices[key]
-            logging.info( key + " target position : " + str(target_values[key]) )
+            logging.info( key + " target position : " + str(target_values[key]) + " (" + str(100 *asset_dollar_value/total_value)[:4] + "%)")
         
         # Trades required to hit target allocation
-        logging.info("Required adjustments to be executed.")
+        logging.info("== Required trades to be executed ==")
         adjustments_required = { asset : trgt - crnt for (asset,trgt,crnt) in zip(self.target_weights.keys(),target_values.values(),self.current_positions.values()) }
         self.update_logger(adjustments_required)
 
         # Update the positions in broker class
         self.broker.positions = Positions(target_values)
-        self.broker.portfolio_adjustments = Positions(adjustments_required)
-        self.broker.aum = sum( prce * units for (prce, units) in zip(prices.values(), target_values.values()) )
+        self.broker.trades    = Positions(adjustments_required)
 
 # =============================================================================================================================================== #
 
 # Class to handle portfolio actions
 class Portfolio():
-    def __init__(self, target_allocations_json: str, broker_object: Broker):
+    def __init__(self, target_allocations_json: str, broker_object: Broker, cash_to_invest: float):
         self.target: str = target_allocations_json
         self.broker: Broker = broker_object
+        self.cash_to_invest: float = cash_to_invest
     
-    def get_current_position(self):
-        return self.broker.get_positions()
-
-    def rebalance_portfolio(self, save_position: bool = True):
-        RebalancingSystem(self.target, self.broker).rebalance()
-        if save_position is True:
-            self.broker.save()
+    def rebalance_portfolio(self):
+        RebalancingSystem(self.target, self.broker).rebalance(self.cash_to_invest)
+    
+    def save_trades(self):
+        self.broker.save()
 
 # =============================================================================================================================================== #
