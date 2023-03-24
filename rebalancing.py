@@ -16,7 +16,7 @@ class Positions:
     def save(self, filename):
         with open( filename + ".json", "w") as f:
             json.dump(self._pos, f)
-            logging.info("Output saved as '" + filename + "'.json" )
+            logging.info("Output saved as '" + filename + ".json'" )
 
 # =============================================================================================================================================== #
 
