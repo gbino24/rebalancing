@@ -24,9 +24,8 @@ performs the following:
 7. The 'positions', 'aum' and 'portfolio_adjustments' values of the broker object are updated.
 
 This function is called within the 'Portfolio' class member function 'rebalance_portfolio' which provides an option to save the outputs to a json file.
-The program will save two files:
+The program will output the following
 
-1. 'new_positions.json' :  This file contains the new positions after rebalancing.
-2. 'trades_to_execute.json' : This file contains the adjustments that were made to 'executedTrades_20230321.json' in order to get the new positions.
+- 'trades_to_execute.json' : This file contains the adjustments that were made to 'executedTrades_20230321.json' in order to get the new positions.
 
 The rebalancing can be done by simply running the 'main.py' script which imports all classes from the 'rebalancing.py' script.
