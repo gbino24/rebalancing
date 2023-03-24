@@ -4,28 +4,26 @@ Program which rebalances a portfolio of positions to a set of target allocations
 Quantitative Strategist Coding Assignment.
 
 The question asks to create a system that will correctly rebalance a portfolio of positions to respect
-a target set of asset allocations. In my program, I am assuming that the initial position of the portfolio is provided
-in the 'executedTrades_20230321.json' file.
+a target set of asset allocations. In my program, I am assuming that the initial position of the portfolio is zero in each asset class.
 
-Opening the file, we see that the initial positions are all short positions:
+"AAPL": 0.0 & "TSLA": 0.0  & "MSFT": 0.0
 
-"AAPL": -238.24266869570647 & "TSLA": -522.6410456647545  & "MSFT": -1079.967091359672
+In order to perform the portfolio rebalance, we need to include a dollar amount to the portfolio value to invest (if we have zero units in each asset, the portfolio value = 0). So, we included an additional variable 'cash' which is used for the allocation when the sum of asset values is zero. For non-zero asset values, the 'cash' variable is ignored.
 
-The broker is initiated to hold zero units of each asset (as per the provided PDF). The program contains a class called 
-'RebalancingSystem' which is responsible for loading in positions, pricing and rebalancing. The 'rebalance()' member function
-performs the following:
+The program contains a class called 'RebalancingSystem' which is responsible for loading in positions, pricing and rebalancing. The 'rebalance()' member function performs the following:
 
 1. Sets the target weights that we must allocate our assets with respect to (40/40/20 split).
-2. Loads the current positions of the portfolio from 'executedTrades_20230321.json'.
+2. Loads the current positions of the portfolio from the broker.
 3. Gets the live prices from the broker class (randomly generated).
 4. Calculates the total dollar value of the portfolio.
-5. Determines the correct positions that are required to respect the target weights.
-6. Determines the adjustments required on the current positions (from step 2) in order to get the correct positions (from step 5).
-7. The 'positions', 'aum' and 'portfolio_adjustments' values of the broker object are updated.
+5. If the dollar value of the portfolio is zero, utilize the cash to hit targets.
+6. Determines the correct positions that are required to hit the target weights.
+7. Determines the adjustments required on the current positions (from step 2) in order to get the correct positions (from step 5).
+8. The 'positions', and 'trades' values of the broker object are updated.
 
-This function is called within the 'Portfolio' class member function 'rebalance_portfolio' which provides an option to save the outputs to a json file.
-The program will output the following
+This function is called within the 'Portfolio' class member function 'rebalance_portfolio' 
 
-- 'trades_to_execute.json' : This file contains the adjustments that were made to 'executedTrades_20230321.json' in order to get the new positions.
+We then save the outputs to a json file using the 'save_trades' function.
+- 'trades_to_execute.json' : This file contains the adjustments that were made to the current position in order to hit the target weights.
 
 The rebalancing can be done by simply running the 'main.py' script which imports all classes from the 'rebalancing.py' script.
