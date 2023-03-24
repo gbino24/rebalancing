@@ -25,6 +25,9 @@ class Broker:
         self.positions: Positions = initial_positions
         self.aum: float = initial_aum
         self.portfolio_adjustments: Positions = Positions({})
+
+        # Seed
+        np.random.seed(100)
     
     def get_live_price(self) -> dict[str, float]:
         prices = { asset: np.random.uniform(10,30) for asset in self.positions.get_universe() }
@@ -34,7 +37,7 @@ class Broker:
         return self.positions
     
     def save(self):
-        self.positions.save(filename = 'new_positions')
+        # self.positions.save(filename = 'new_positions')     -- New positions
         self.portfolio_adjustments.save(filename = 'trades_to_execute')
 
     def execute_trades(self, execution_positions: Positions) -> None:
@@ -84,7 +87,7 @@ class RebalancingSystem():
                 
         else:
             # File does not exist, exit the program
-            logging.error("Could not load current positions. File '" +  self.target +"' not found.")
+            logging.error("Could not load current positions. File '" +  self.target + "' not found.")
             quit()
 
     # Load in our current positions
@@ -137,10 +140,10 @@ class RebalancingSystem():
         
         # Trades required to hit target allocation
         logging.info("Required adjustments to be executed.")
-        adjustments_required = { asset : trgt - crnt for (asset,trgt, crnt) in zip(self.target_weights.keys(),target_values.values(), self.current_positions.values()) }
+        adjustments_required = { asset : trgt - crnt for (asset,trgt,crnt) in zip(self.target_weights.keys(),target_values.values(),self.current_positions.values()) }
         self.update_logger(adjustments_required)
 
-        # Update the broker class
+        # Update the positions in broker class
         self.broker.positions = Positions(target_values)
         self.broker.portfolio_adjustments = Positions(adjustments_required)
         self.broker.aum = sum( prce * units for (prce, units) in zip(prices.values(), target_values.values()) )
